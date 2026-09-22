@@ -1,0 +1,21 @@
+{
+  "name": "BabaRadyo - Canlı Radyo",
+  "short_name": "BabaRadyo",
+  "description": "Canlı yerel ve dünya radyolarını dinleyin",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#160b21",
+  "theme_color": "#160b21",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/favicon.svg",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
