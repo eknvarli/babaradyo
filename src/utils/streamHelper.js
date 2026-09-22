@@ -12,29 +12,44 @@ export function isHlsStream(url) {
   )
 }
 
-export function tryUpgradeToHttps(url) {
-  if (!url) return ''
-  const trimmed = url.trim()
-  if (window.location.protocol === 'https:' && trimmed.startsWith('http://')) {
-    return trimmed.replace('http://', 'https://')
-  }
-  return trimmed
+export function isPlaylistFile(url) {
+  if (!url) return false
+  const lower = url.toLowerCase().split('?')[0]
+  return lower.endsWith('.pls') || lower.endsWith('.asx') || (lower.endsWith('.m3u') && !lower.endsWith('.m3u8'))
+}
+
+export function resetAudioElement(audio) {
+  if (!audio) return
+  try {
+    audio.pause()
+  } catch (_) {}
+  try {
+    audio.removeAttribute('src')
+  } catch (_) {}
+  try {
+    audio.load()
+  } catch (_) {}
 }
 
 export function describeMediaError(err) {
   if (!err) return 'Akış bağlantı hatası'
   if (typeof err === 'string') return err
-  if (err.message) return err.message
+  if (err.message && typeof err.message === 'string') return err.message
   if (err.code) {
     switch (err.code) {
-      case 1: return 'Kullanıcı tarafından durduruldu'
-      case 2: return 'Ağ bağlantısı koptu'
-      case 3: return 'Ses çözme (codec) hatası'
-      case 4: return 'Yayın sunucusu yanıt vermiyor veya format desteklenmiyor'
-      default: return `Medya hatası (kod: ${err.code})`
+      case 1:
+        return 'Kullanıcı tarafından durduruldu'
+      case 2:
+        return 'Ağ bağlantısı zaman aşımına uğradı'
+      case 3:
+        return 'Ses çözme (PIPELINE_ERROR_DECODE) hatası'
+      case 4:
+        return 'Format desteklenmiyor veya sunucu kapalı'
+      default:
+        return `Medya hatası (kod: ${err.code})`
     }
   }
-  return 'Yayın şu an kullanılamıyor'
+  return 'Geçici Olarak Kullanılamıyor'
 }
 
 export function setupStream(audioEl, originalUrl, onError) {
@@ -44,7 +59,21 @@ export function setupStream(audioEl, originalUrl, onError) {
   let isCleanedUp = false
 
   const streamUrl = originalUrl.trim()
-  const isHls = isHlsStream(streamUrl)
+
+  if (isPlaylistFile(streamUrl)) {
+    if (onError) {
+      onError({
+        message: 'Doğrudan oynatılamayan çalma listesi (.pls/.m3u)',
+        code: 4,
+        originalUrl: streamUrl,
+      })
+    }
+    return () => {}
+  }
+
+  resetAudioElement(audioEl)
+  audioEl.preload = 'none'
+  audioEl.crossOrigin = 'anonymous'
 
   const handleFatalError = (err) => {
     if (isCleanedUp) return
@@ -52,36 +81,44 @@ export function setupStream(audioEl, originalUrl, onError) {
     if (onError) onError({ message, originalUrl: streamUrl, error: err })
   }
 
+  const isHls = isHlsStream(streamUrl)
+
   if (isHls) {
     if (Hls.isSupported()) {
       try {
         const hls = new Hls({
           enableWorker: true,
           lowLatencyMode: true,
-          backBufferLength: 15,
-          maxLoadingDelay: 4,
-          maxBufferLength: 20,
-          manifestLoadingTimeOut: 8000,
-          manifestLoadingMaxRetry: 2,
-          levelLoadingTimeOut: 8000,
-          levelLoadingMaxRetry: 2,
-          fragLoadingTimeOut: 10000,
-          fragLoadingMaxRetry: 2,
+          backBufferLength: 10,
+          maxBufferLength: 15,
+          manifestLoadingTimeOut: 7000,
+          manifestLoadingMaxRetry: 1,
+          levelLoadingTimeOut: 7000,
+          levelLoadingMaxRetry: 1,
+          fragLoadingTimeOut: 8000,
+          fragLoadingMaxRetry: 1,
           xhrSetup: (xhr) => {
             xhr.withCredentials = false
           },
         })
 
-        hls.loadSource(streamUrl)
         hls.attachMedia(audioEl)
+
+        hls.on(Hls.Events.MEDIA_ATTACHED, () => {
+          if (isCleanedUp) return
+          hls.loadSource(streamUrl)
+        })
 
         hls.on(Hls.Events.MANIFEST_PARSED, () => {
           if (isCleanedUp) return
-          audioEl.play().catch((e) => {
-            if (e.name !== 'NotAllowedError') {
-              handleFatalError(e)
-            }
-          })
+          const playPromise = audioEl.play()
+          if (playPromise !== undefined) {
+            playPromise.catch((e) => {
+              if (e.name !== 'NotAllowedError') {
+                handleFatalError(e)
+              }
+            })
+          }
         })
 
         hls.on(Hls.Events.ERROR, (event, data) => {
@@ -89,15 +126,12 @@ export function setupStream(audioEl, originalUrl, onError) {
           if (data.fatal) {
             switch (data.type) {
               case Hls.ErrorTypes.NETWORK_ERROR:
-                console.warn('HLS ağ hatası:', data.details)
                 hls.startLoad()
                 break
               case Hls.ErrorTypes.MEDIA_ERROR:
-                console.warn('HLS medya kurtarma deneniyor:', data.details)
                 hls.recoverMediaError()
                 break
               default:
-                console.error('HLS giderilemeyen hata:', data)
                 hls.destroy()
                 handleFatalError(data)
                 break
@@ -107,19 +141,25 @@ export function setupStream(audioEl, originalUrl, onError) {
 
         hlsInstance = hls
       } catch (hlsInitErr) {
-        console.error('HLS başlatılamadı:', hlsInitErr)
         handleFatalError(hlsInitErr)
       }
     } else if (audioEl.canPlayType('application/vnd.apple.mpegurl')) {
-      audioEl.src = streamUrl
-      audioEl.load()
-      audioEl.play().catch((e) => {
-        if (e.name !== 'NotAllowedError') {
-          handleFatalError(e)
+      try {
+        audioEl.src = streamUrl
+        audioEl.load()
+        const playPromise = audioEl.play()
+        if (playPromise !== undefined) {
+          playPromise.catch((e) => {
+            if (e.name !== 'NotAllowedError') {
+              handleFatalError(e)
+            }
+          })
         }
-      })
+      } catch (safariErr) {
+        handleFatalError(safariErr)
+      }
     } else {
-      handleFatalError('Tarayıcınız HLS (.m3u8) akışlarını desteklemiyor')
+      handleFatalError('Cihazınız HLS (.m3u8) akışlarını desteklemiyor')
     }
   } else {
     try {
@@ -130,7 +170,6 @@ export function setupStream(audioEl, originalUrl, onError) {
         playPromise.catch((e) => {
           if (isCleanedUp) return
           if (e.name !== 'NotAllowedError') {
-            console.warn('HTML5 Audio oynatma hatası:', e.name, e.message)
             handleFatalError(e)
           }
         })
@@ -148,10 +187,6 @@ export function setupStream(audioEl, originalUrl, onError) {
       } catch (_) {}
       hlsInstance = null
     }
-    try {
-      audioEl.pause()
-      audioEl.removeAttribute('src')
-      audioEl.load()
-    } catch (_) {}
+    resetAudioElement(audioEl)
   }
 }

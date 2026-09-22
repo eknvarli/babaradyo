@@ -1,16 +1,8 @@
 export const DEFAULT_RADIO_SVG = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(`
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100%" height="100%">
-  <defs>
-    <linearGradient id="radioGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#4a6cf7"/>
-      <stop offset="50%" stop-color="#3b82f6"/>
-      <stop offset="100%" stop-color="#7c3aed"/>
-    </linearGradient>
-  </defs>
-  <rect width="100" height="100" rx="22" fill="url(#radioGrad)"/>
-  <circle cx="50" cy="50" r="32" fill="rgba(255,255,255,0.1)"/>
-  <path d="M38 34c-6.627 0-12 5.373-12 12v12c0 6.627 5.373 12 12 12h24c6.627 0 12-5.373 12-12V46c0-6.627-5.373-12-12-12H38zm0 5h24c3.866 0 7 3.134 7 7v12c0 3.866-3.134 7-7 7H38c-3.866 0-7-3.134-7-7V46c0-3.866 3.134-7 7-7zm25 4a3 3 0 100 6 3 3 0 000-6zm-19 3a7 7 0 100 14 7 7 0 000-14zm0 3a4 4 0 110 8 4 4 0 010-8z" fill="#ffffff"/>
-  <circle cx="50" cy="53" r="2.5" fill="#ffffff"/>
+  <rect width="100" height="100" rx="16" fill="#242424"/>
+  <circle cx="50" cy="50" r="30" fill="#2e2e2e"/>
+  <path d="M36 36c-5.5 0-10 4.5-10 10v12c0 5.5 4.5 10 10 10h28c5.5 0 10-4.5 10-10V46c0-5.5-4.5-10-10-10H36zm0 4h28c3.3 0 6 2.7 6 6v12c0 3.3-2.7 6-6 6H36c-3.3 0-6-2.7-6-6V46c0-3.3 2.7-6 6-6zm24 3a2.5 2.5 0 100 5 2.5 2.5 0 000-5zm-18 3a6 6 0 100 12 6 6 0 000-12zm0 2.5a3.5 3.5 0 110 7 3.5 3.5 0 010-7z" fill="#888888"/>
 </svg>
 `)}`;
 
@@ -23,19 +15,6 @@ export function safeFaviconUrl(url) {
 }
 
 export function getPlaceholderSvg(name = '') {
-  const PALETTES = [
-    ['#4a6cf7', '#7c3aed'],
-    ['#ec4899', '#be123c'],
-    ['#10b981', '#0d9488'],
-    ['#f97316', '#d97706'],
-    ['#06b6d4', '#0284c7'],
-    ['#8b5cf6', '#7c3aed'],
-    ['#ef4444', '#dc2626'],
-    ['#14b8a6', '#0891b2'],
-  ]
-  const idx = name ? name.charCodeAt(0) % PALETTES.length : 0
-  const [c1, c2] = PALETTES[idx]
-
   const initials = name
     ? name
         .split(/\s+/)
@@ -46,16 +25,11 @@ export function getPlaceholderSvg(name = '') {
     : 'BR'
 
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <defs>
-    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="${c1}"/>
-      <stop offset="100%" stop-color="${c2}"/>
-    </linearGradient>
-  </defs>
-  <rect width="64" height="64" rx="14" fill="url(#g)"/>
-  <text x="32" y="41" font-size="${initials.length > 1 ? '22' : '26'}"
-    font-family="system-ui, -apple-system, sans-serif" font-weight="700"
-    fill="white" text-anchor="middle" opacity="0.95">${initials}</text>
+  <rect width="64" height="64" rx="10" fill="#242424"/>
+  <circle cx="32" cy="32" r="22" fill="#2d2d2d"/>
+  <text x="32" y="38" font-size="${initials.length > 1 ? '18' : '22'}"
+    font-family="system-ui, -apple-system, sans-serif" font-weight="600"
+    fill="#b3b3b3" text-anchor="middle">${initials}</text>
 </svg>`
 
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`

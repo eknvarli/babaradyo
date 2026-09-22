@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react'
+import React, { useState, useCallback, useMemo, useRef } from 'react'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import {
   faRadio,
@@ -22,35 +22,25 @@ import { useLocalStorage } from './hooks/useLocalStorage.js'
 
 function SkeletonCard() {
   return (
-    <div className="glass rounded-2xl p-4 animate-pulse">
-      <div className="flex items-start justify-between mb-3">
-        <div className="w-16 h-16 skeleton rounded-xl" />
-        <div className="w-7 h-7 skeleton rounded-lg" />
-      </div>
-      <div className="space-y-2 mb-3">
-        <div className="h-4 skeleton rounded w-3/4" />
-        <div className="h-3 skeleton rounded w-1/2" />
-      </div>
-      <div className="flex gap-1 mb-3">
-        <div className="h-5 skeleton rounded-full w-12" />
-        <div className="h-5 skeleton rounded-full w-16" />
-      </div>
-      <div className="h-8 skeleton rounded-xl" />
+    <div className="bg-[#181818] rounded-md p-2.5 sm:p-3 animate-pulse flex flex-col">
+      <div className="aspect-square w-full rounded-md bg-[#282828] mb-2" />
+      <div className="h-3.5 bg-[#282828] rounded w-3/4 mb-1.5" />
+      <div className="h-3 bg-[#282828] rounded w-1/2" />
     </div>
   )
 }
 
-function EmptyState({ message, icon, iconColor = 'text-white/40', action }) {
+function EmptyState({ message, icon, iconColor = 'text-neutral-400', action }) {
   return (
-    <div className="col-span-full flex flex-col items-center justify-center py-24 gap-4 animate-fade-in">
-      <div className={`text-5xl ${iconColor}`}>
+    <div className="col-span-full flex flex-col items-center justify-center py-20 px-4 gap-3 animate-fade-in text-center">
+      <div className={`text-4xl ${iconColor}`}>
         <FontAwesomeIcon icon={icon || faRadio} />
       </div>
-      <p className="text-white/50 text-center max-w-sm text-sm leading-relaxed">{message}</p>
+      <p className="text-neutral-400 max-w-sm text-xs sm:text-sm leading-relaxed">{message}</p>
       {action && (
         <button
           onClick={action.onClick}
-          className="mt-2 px-4 py-2 bg-brand-600/20 hover:bg-brand-600/30 text-brand-300 rounded-xl text-sm font-medium transition-all duration-200 border border-brand-500/25"
+          className="mt-1 px-3.5 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-full text-xs font-medium transition-colors"
         >
           {action.label}
         </button>
@@ -64,7 +54,7 @@ function CategoryHeader({ category, selectedCity, selectedGenre, stationCount, i
     if (isSearching) {
       return (
         <>
-          <FontAwesomeIcon icon={faMagnifyingGlass} className="text-brand-400 mr-2.5 text-lg" />
+          <FontAwesomeIcon icon={faMagnifyingGlass} className="text-[#1db954] mr-2 text-base" />
           <span>"{searchQuery}" için sonuçlar</span>
         </>
       )
@@ -74,28 +64,28 @@ function CategoryHeader({ category, selectedCity, selectedGenre, stationCount, i
       case CATEGORIES.TURKEY:
         return (
           <>
-            <FontAwesomeIcon icon={faMapLocationDot} className="text-red-400 mr-2.5 text-lg" />
+            <FontAwesomeIcon icon={faMapLocationDot} className="text-red-400 mr-2 text-base" />
             <span>Türkiye{selectedCity !== 'Tümü' ? ` — ${selectedCity}` : ''}</span>
           </>
         )
       case CATEGORIES.WORLD:
         return (
           <>
-            <FontAwesomeIcon icon={faGlobe} className="text-sky-400 mr-2.5 text-lg" />
+            <FontAwesomeIcon icon={faGlobe} className="text-sky-400 mr-2 text-base" />
             <span>Dünya Radyoları</span>
           </>
         )
       case CATEGORIES.GENRES:
         return (
           <>
-            <FontAwesomeIcon icon={faMusic} className="text-purple-400 mr-2.5 text-lg" />
+            <FontAwesomeIcon icon={faMusic} className="text-purple-400 mr-2 text-base" />
             <span>{selectedGenre?.label || 'Müzik Türü'}</span>
           </>
         )
       case CATEGORIES.FAVORITES:
         return (
           <>
-            <FontAwesomeIcon icon={faHeartSolid} className="text-pink-500 mr-2.5 text-lg" />
+            <FontAwesomeIcon icon={faHeartSolid} className="text-pink-500 mr-2 text-base" />
             <span>Favorilerim</span>
           </>
         )
@@ -105,13 +95,13 @@ function CategoryHeader({ category, selectedCity, selectedGenre, stationCount, i
   }
 
   return (
-    <div className="flex items-center justify-between mb-6">
+    <div className="flex items-center justify-between mb-4">
       <div>
-        <h2 className="text-xl font-bold text-white flex items-center">
+        <h2 className="text-base sm:text-lg font-bold text-white flex items-center">
           {getHeaderContent()}
         </h2>
         {stationCount > 0 && (
-          <p className="text-sm text-white/35 mt-1">{stationCount} aktif canlı istasyon</p>
+          <p className="text-xs text-neutral-400 mt-0.5">{stationCount} aktif canlı istasyon</p>
         )}
       </div>
     </div>
@@ -124,6 +114,8 @@ export default function App() {
 
   const radio = useRadio(favorites)
 
+  const playerRef = useRef(null)
+
   const handleStationFailure = useCallback(
     (failedStation) => {
       if (!failedStation) return
@@ -132,14 +124,15 @@ export default function App() {
 
       if (nextStation && nextStation.id !== failedStation.id) {
         setTimeout(() => {
-          player.playStation(nextStation)
-        }, 150)
+          playerRef.current?.playStation(nextStation)
+        }, 200)
       }
     },
     [radio]
   )
 
   const player = usePlayer({ onStationFailure: handleStationFailure })
+  playerRef.current = player
 
   const favoriteIds = useMemo(
     () => new Set(favorites.map((f) => f.id)),
@@ -171,17 +164,9 @@ export default function App() {
     [player]
   )
 
-  const bgStyle = {
-    background: `
-      radial-gradient(ellipse 80% 60% at 20% 20%, rgba(74, 108, 247, 0.07) 0%, transparent 60%),
-      radial-gradient(ellipse 60% 40% at 80% 80%, rgba(168, 85, 247, 0.06) 0%, transparent 60%),
-      #050508
-    `,
-  }
-
   return (
-    <div className="min-h-screen flex flex-col" style={bgStyle}>
-      <div className="flex flex-1 relative">
+    <div className="min-h-screen flex flex-col bg-[#121212] text-white">
+      <div className="flex flex-1 relative min-h-0">
         <Sidebar
           category={radio.category}
           setCategory={radio.setCategory}
@@ -195,17 +180,17 @@ export default function App() {
         />
 
         <main className="flex-1 min-w-0 flex flex-col">
-          <header className="sticky top-0 z-20 glass border-b border-white/5 px-4 md:px-6 py-4">
-            <div className="flex items-center gap-3">
+          <header className="sticky top-0 z-20 bg-[#121212]/95 backdrop-blur-md border-b border-white/[0.06] px-3 sm:px-6 py-2.5 sm:py-3.5">
+            <div className="flex items-center gap-2.5 sm:gap-3">
               <button
                 onClick={() => setSidebarOpen(true)}
-                className="md:hidden p-2.5 rounded-xl text-white/50 hover:text-white hover:bg-white/5 transition-all"
+                className="md:hidden p-2 rounded-lg text-neutral-400 hover:text-white hover:bg-white/5 transition-colors"
                 aria-label="Menüyü aç"
               >
-                <FontAwesomeIcon icon={faBars} className="text-base" />
+                <FontAwesomeIcon icon={faBars} className="text-sm" />
               </button>
 
-              <div className="flex-1 max-w-xl">
+              <div className="flex-1 max-w-md">
                 <SearchBar
                   query={radio.searchQuery}
                   onChange={radio.handleSearch}
@@ -214,18 +199,18 @@ export default function App() {
                 />
               </div>
 
-              <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/5 border border-white/5">
-                <FontAwesomeIcon icon={faTowerBroadcast} className="text-green-400 text-xs animate-pulse" />
-                <span className="text-xs text-white/70 font-medium">Canlı Yayınlar</span>
+              <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/[0.06] border border-white/[0.06]">
+                <FontAwesomeIcon icon={faTowerBroadcast} className="text-[#1db954] text-xs animate-pulse" />
+                <span className="text-xs text-neutral-300 font-medium">Canlı</span>
               </div>
 
-              <FontAwesomeIcon icon={faRadio} className="md:hidden text-brand-400 text-lg ml-auto mr-1" />
+              <FontAwesomeIcon icon={faRadio} className="md:hidden text-white text-base ml-auto mr-1" />
             </div>
           </header>
 
           <div
-            className="flex-1 overflow-y-auto px-4 md:px-6 py-6"
-            style={{ paddingBottom: player.currentStation ? '110px' : '24px' }}
+            className="flex-1 overflow-y-auto px-3 sm:px-6 py-4 sm:py-5"
+            style={{ paddingBottom: player.currentStation ? '88px' : '32px' }}
           >
             {!radio.loading && radio.stations.length > 0 && (
               <CategoryHeader
@@ -239,8 +224,8 @@ export default function App() {
             )}
 
             {radio.error && !radio.loading && (
-              <div className="mb-6 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm flex items-center gap-2 animate-fade-in">
-                <FontAwesomeIcon icon={faCircleExclamation} className="w-4 h-4 flex-shrink-0" />
+              <div className="mb-4 px-3.5 py-2.5 rounded-md bg-red-500/10 border border-red-500/20 text-red-400 text-xs sm:text-sm flex items-center gap-2 animate-fade-in">
+                <FontAwesomeIcon icon={faCircleExclamation} className="w-3.5 h-3.5 flex-shrink-0" />
                 <span>{radio.error}</span>
                 <button
                   onClick={radio.reload}
@@ -251,9 +236,9 @@ export default function App() {
               </div>
             )}
 
-            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-2.5 sm:gap-3 lg:gap-3.5">
               {radio.loading && !radio.isSearching &&
-                Array.from({ length: 12 }).map((_, i) => <SkeletonCard key={i} />)
+                Array.from({ length: 18 }).map((_, i) => <SkeletonCard key={i} />)
               }
 
               {!radio.loading && radio.stations.length === 0 && !radio.error && (
@@ -266,14 +251,14 @@ export default function App() {
                 ) : radio.isSearching ? (
                   <EmptyState
                     icon={faMagnifyingGlass}
-                    iconColor="text-brand-400/60"
+                    iconColor="text-neutral-400"
                     message={`"${radio.searchQuery}" için çalışan sonuç bulunamadı.`}
                     action={{ label: 'Aramayı temizle', onClick: radio.clearSearch }}
                   />
                 ) : (
                   <EmptyState
                     icon={faRadio}
-                    iconColor="text-white/30"
+                    iconColor="text-neutral-400"
                     message="Bu kategoride aktif radyo bulunamadı."
                     action={{ label: 'Yenile', onClick: radio.reload }}
                   />

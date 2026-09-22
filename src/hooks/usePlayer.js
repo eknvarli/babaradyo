@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { setupStream, describeMediaError } from '../utils/streamHelper.js'
+import { setupStream, resetAudioElement, describeMediaError } from '../utils/streamHelper.js'
 import { clickStation } from '../utils/api.js'
 
-const STALL_TIMEOUT_MS = 8000
+const STALL_TIMEOUT_MS = 7500
 
 export function usePlayer({ onStationFailure } = {}) {
   const [currentStation, setCurrentStation] = useState(null)
@@ -19,12 +19,13 @@ export function usePlayer({ onStationFailure } = {}) {
   const isMountedRef = useRef(true)
   const failureCallbackRef = useRef(onStationFailure)
   const activeStationRef = useRef(null)
+  const currentUrlIndexRef = useRef(0)
 
   useEffect(() => {
     failureCallbackRef.current = onStationFailure
   }, [onStationFailure])
 
-  const showToast = useCallback((message, type = 'error', duration = 4000) => {
+  const showToast = useCallback((message, type = 'error', duration = 3500) => {
     if (!isMountedRef.current) return
     setToast({ message, type, id: Date.now() })
     setTimeout(() => {
@@ -41,23 +42,73 @@ export function usePlayer({ onStationFailure } = {}) {
     }
   }, [])
 
-  const triggerStationFailure = useCallback(
-    (station, reason = 'Yayın şu an kullanılamıyor') => {
+  const handleStationError = useCallback(
+    (station, errorInfo) => {
       clearStallTimer()
-      if (!station) return
+      if (!station || !isMountedRef.current) return
 
-      console.warn(`[BabaRadyo] İstasyon arızalı: ${station.name} (${reason})`)
+      const urls = []
+      if (station.url_resolved) urls.push(station.url_resolved)
+      if (station.url && !urls.includes(station.url)) urls.push(station.url)
+
+      const nextUrlIndex = currentUrlIndexRef.current + 1
+
+      if (nextUrlIndex < urls.length) {
+        currentUrlIndexRef.current = nextUrlIndex
+        const nextUrl = urls[nextUrlIndex]
+        showToast(`"${station.name}" için alternatif akış deneniyor...`, 'info', 2500)
+
+        const audio = audioRef.current
+        if (audio) {
+          resetAudioElement(audio)
+          audio.preload = 'none'
+          audio.crossOrigin = 'anonymous'
+        }
+
+        if (cleanupRef.current) {
+          try {
+            cleanupRef.current()
+          } catch (_) {}
+          cleanupRef.current = null
+        }
+
+        setIsLoading(true)
+        setIsPlaying(false)
+
+        stallTimerRef.current = setTimeout(() => {
+          if (!isMountedRef.current) return
+          if (activeStationRef.current && activeStationRef.current.id === station.id) {
+            handleStationError(station, { message: 'Zaman aşımı', code: 2 })
+          }
+        }, STALL_TIMEOUT_MS)
+
+        if (audio) {
+          cleanupRef.current = setupStream(audio, nextUrl, (err) => {
+            if (!isMountedRef.current) return
+            handleStationError(station, err)
+          })
+        }
+        return
+      }
 
       if (cleanupRef.current) {
-        try { cleanupRef.current() } catch (_) {}
+        try {
+          cleanupRef.current()
+        } catch (_) {}
         cleanupRef.current = null
       }
 
+      const audio = audioRef.current
+      if (audio) {
+        resetAudioElement(audio)
+      }
+
+      const errorText = 'Geçici Olarak Kullanılamıyor'
       setIsPlaying(false)
       setIsLoading(false)
-      setError(reason)
+      setError(errorText)
 
-      showToast(`"${station.name}" yayını açılamadı, sıradaki radyoya geçiliyor...`, 'warn', 3500)
+      showToast(`"${station.name}" geçici olarak kullanılamıyor, sıradaki radyoya geçiliyor...`, 'warn', 3500)
 
       if (failureCallbackRef.current) {
         failureCallbackRef.current(station)
@@ -72,20 +123,25 @@ export function usePlayer({ onStationFailure } = {}) {
       stallTimerRef.current = setTimeout(() => {
         if (!isMountedRef.current) return
         if (activeStationRef.current && activeStationRef.current.id === station?.id) {
-          triggerStationFailure(station, 'Yayın zaman aşımına uğradı')
+          handleStationError(station, { message: 'Yayın yanıt vermedi (ERR_CONNECTION_TIMED_OUT)', code: 2 })
         }
       }, STALL_TIMEOUT_MS)
     },
-    [clearStallTimer, triggerStationFailure]
+    [clearStallTimer, handleStationError]
   )
 
   useEffect(() => {
     isMountedRef.current = true
 
-    const audio = new Audio()
-    audio.preload = 'none'
-    audio.volume = volume
-    audioRef.current = audio
+    if (!audioRef.current) {
+      const audio = new Audio()
+      audio.preload = 'none'
+      audio.crossOrigin = 'anonymous'
+      audio.volume = volume
+      audioRef.current = audio
+    }
+
+    const audio = audioRef.current
 
     const onPlaying = () => {
       if (!isMountedRef.current) return
@@ -112,9 +168,14 @@ export function usePlayer({ onStationFailure } = {}) {
     const onError = () => {
       if (!isMountedRef.current) return
       clearStallTimer()
-      const reason = describeMediaError(audio.error)
+      const mediaErr = audio.error
+      const reason = describeMediaError(mediaErr)
       if (activeStationRef.current) {
-        triggerStationFailure(activeStationRef.current, reason)
+        handleStationError(activeStationRef.current, {
+          message: reason,
+          code: mediaErr?.code,
+          error: mediaErr,
+        })
       }
     }
 
@@ -148,22 +209,38 @@ export function usePlayer({ onStationFailure } = {}) {
       audio.removeEventListener('error', onError)
       audio.removeEventListener('canplay', onCanPlay)
       audio.removeEventListener('stalled', onStalled)
-      audio.pause()
-      try { audio.src = '' } catch (_) {}
-      try { audio.load() } catch (_) {}
+      resetAudioElement(audio)
     }
   }, [])
 
   const playStation = useCallback(
     (station) => {
-      if (!station || !station.url) {
+      if (!station) return
+
+      const urls = []
+      if (station.url_resolved) urls.push(station.url_resolved)
+      if (station.url && !urls.includes(station.url)) urls.push(station.url)
+
+      if (urls.length === 0) {
         showToast('Bu istasyonun akış adresi bulunamadı.', 'warn')
         return
       }
 
+      currentUrlIndexRef.current = 0
+      const initialUrl = urls[0]
+
       if (cleanupRef.current) {
-        try { cleanupRef.current() } catch (_) {}
+        try {
+          cleanupRef.current()
+        } catch (_) {}
         cleanupRef.current = null
+      }
+
+      const audio = audioRef.current
+      if (audio) {
+        resetAudioElement(audio)
+        audio.preload = 'none'
+        audio.crossOrigin = 'anonymous'
       }
 
       clearStallTimer()
@@ -173,22 +250,22 @@ export function usePlayer({ onStationFailure } = {}) {
       setError(null)
       setIsPlaying(false)
 
-      const audio = audioRef.current
       if (!audio) return
 
       startStallTimer(station)
 
-      const cleanup = setupStream(audio, station.url, (errInfo) => {
+      const cleanup = setupStream(audio, initialUrl, (errInfo) => {
         if (!isMountedRef.current) return
-        const reason = errInfo?.message || 'Akış yüklenemedi'
-        triggerStationFailure(station, reason)
+        handleStationError(station, errInfo)
       })
 
       cleanupRef.current = cleanup
 
-      clickStation(station.id).catch(() => {})
+      if (station.id) {
+        clickStation(station.id).catch(() => {})
+      }
     },
-    [clearStallTimer, startStallTimer, triggerStationFailure, showToast]
+    [clearStallTimer, startStallTimer, handleStationError, showToast]
   )
 
   const togglePlay = useCallback(() => {
@@ -201,29 +278,37 @@ export function usePlayer({ onStationFailure } = {}) {
       if (audio.src && audio.src !== window.location.href) {
         setIsLoading(true)
         if (currentStation) startStallTimer(currentStation)
-        audio.play().catch((e) => {
-          if (!isMountedRef.current) return
-          clearStallTimer()
-          if (e.name === 'NotAllowedError') {
-            setIsLoading(false)
-          } else {
-            console.warn('Oynatma başlatılamadı:', e)
-            if (currentStation) {
-              triggerStationFailure(currentStation, 'Oynatma başlatılamadı')
+        const playPromise = audio.play()
+        if (playPromise !== undefined) {
+          playPromise.catch((e) => {
+            if (!isMountedRef.current) return
+            clearStallTimer()
+            if (e.name === 'NotAllowedError') {
+              setIsLoading(false)
+            } else {
+              if (currentStation) {
+                handleStationError(currentStation, e)
+              }
             }
-          }
-        })
+          })
+        }
       } else if (currentStation) {
         playStation(currentStation)
       }
     }
-  }, [isPlaying, currentStation, playStation, startStallTimer, clearStallTimer, triggerStationFailure])
+  }, [isPlaying, currentStation, playStation, startStallTimer, clearStallTimer, handleStationError])
 
   const stopStation = useCallback(() => {
     clearStallTimer()
     if (cleanupRef.current) {
-      try { cleanupRef.current() } catch (_) {}
+      try {
+        cleanupRef.current()
+      } catch (_) {}
       cleanupRef.current = null
+    }
+    const audio = audioRef.current
+    if (audio) {
+      resetAudioElement(audio)
     }
     activeStationRef.current = null
     setIsPlaying(false)

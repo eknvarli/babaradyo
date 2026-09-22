@@ -14,10 +14,10 @@ import { CATEGORIES, TURKEY_CITIES, MUSIC_GENRES } from '../hooks/useRadio.js'
 
 function SidebarSection({ title, icon, children }) {
   return (
-    <div className="mb-2">
+    <div className="mb-1">
       <div className="px-4 py-2 flex items-center gap-2">
-        {icon && <FontAwesomeIcon icon={icon} className="text-white/30 text-xs" />}
-        <span className="text-xs font-semibold uppercase tracking-wider text-white/40">
+        {icon && <FontAwesomeIcon icon={icon} className="text-white/20 text-xs" />}
+        <span className="text-[10px] font-bold uppercase tracking-widest text-white/30">
           {title}
         </span>
       </div>
@@ -26,22 +26,23 @@ function SidebarSection({ title, icon, children }) {
   )
 }
 
-function NavItem({ icon, label, active, onClick, badge, iconColor }) {
+function NavItem({ icon, label, active, onClick, badge }) {
   return (
     <button
       onClick={onClick}
-      className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 text-left group
+      className={`w-full flex items-center gap-3 px-4 py-2 text-sm font-medium transition-all duration-150 text-left
         ${active
-          ? 'bg-brand-600/20 text-brand-300 border-l-2 border-brand-500 pl-[14px] shadow-sm'
-          : 'text-white/65 hover:text-white hover:bg-white/5 border-l-2 border-transparent pl-[14px]'
+          ? 'text-white border-l-[3px] border-white pl-[13px]'
+          : 'text-spotify-muted hover:text-white border-l-[3px] border-transparent pl-[13px]'
         }`}
+      style={{ background: active ? 'rgba(255,255,255,0.07)' : undefined }}
     >
-      <span className={`w-4 text-center text-sm transition-colors ${iconColor || (active ? 'text-brand-400' : 'text-white/40 group-hover:text-white/70')}`}>
+      <span className={`w-4 text-center text-sm ${active ? 'text-white' : 'text-spotify-subtle'}`}>
         <FontAwesomeIcon icon={icon} />
       </span>
       <span className="flex-1 truncate">{label}</span>
       {badge !== undefined && (
-        <span className="text-xs font-semibold bg-pink-500/20 text-pink-400 px-2 py-0.5 rounded-full border border-pink-500/20">
+        <span className="text-[10px] font-bold bg-white/10 text-white/70 px-1.5 py-0.5 rounded-sm min-w-[18px] text-center">
           {badge}
         </span>
       )}
@@ -88,38 +89,37 @@ export default function Sidebar({
 
       <aside
         className={`
-          fixed top-0 left-0 h-full z-40 w-64 flex flex-col
-          glass border-r border-white/5
+          fixed top-0 left-0 h-full z-40 w-60 flex flex-col
           transition-transform duration-300 ease-in-out
           ${isOpen ? 'translate-x-0' : '-translate-x-full'}
           md:translate-x-0 md:static md:z-auto md:h-auto md:flex
         `}
+        style={{ background: '#121212', borderRight: '1px solid rgba(255,255,255,0.06)' }}
       >
-        <div className="flex items-center gap-3 px-5 py-5 border-b border-white/5">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-500 to-purple-600 flex items-center justify-center text-white text-base shadow-lg glow-brand">
+        <div className="flex items-center gap-3 px-5 py-5" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+          <div className="w-8 h-8 rounded-md bg-white flex items-center justify-center text-black text-sm shadow-md">
             <FontAwesomeIcon icon={faRadio} />
           </div>
           <div>
-            <h1 className="text-base font-bold gradient-text">BabaRadyo</h1>
-            <p className="text-xs text-white/30">Canlı Radyo Platformu</p>
+            <h1 className="text-sm font-bold text-white tracking-tight">BabaRadyo</h1>
+            <p className="text-[10px] text-spotify-subtle">Canlı Radyo Platformu</p>
           </div>
           <button
             onClick={onClose}
-            className="ml-auto md:hidden text-white/40 hover:text-white p-2 rounded-lg hover:bg-white/5 transition-colors"
+            className="ml-auto md:hidden text-spotify-subtle hover:text-white p-1 rounded transition-colors"
             aria-label="Menüyü kapat"
           >
-            <FontAwesomeIcon icon={faXmark} className="text-base" />
+            <FontAwesomeIcon icon={faXmark} className="text-sm" />
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto py-3 px-2 space-y-3">
-          <SidebarSection title="Ana Menü" icon={faLayerGroup}>
+        <div className="flex-1 overflow-y-auto py-4 space-y-4">
+          <SidebarSection title="Keşfet" icon={faLayerGroup}>
             <NavItem
               icon={faGlobe}
               label="Dünya Radyoları"
               active={category === CATEGORIES.WORLD}
               onClick={() => handleCategoryClick(CATEGORIES.WORLD)}
-              iconColor="text-sky-400"
             />
             <NavItem
               icon={faHeartSolid}
@@ -127,7 +127,6 @@ export default function Sidebar({
               active={category === CATEGORIES.FAVORITES}
               onClick={() => handleCategoryClick(CATEGORIES.FAVORITES)}
               badge={favoritesCount > 0 ? favoritesCount : undefined}
-              iconColor="text-pink-500"
             />
           </SidebarSection>
 
@@ -139,15 +138,17 @@ export default function Sidebar({
                 <button
                   key={city}
                   onClick={() => handleCityClick(city)}
-                  className={`w-full flex items-center gap-3 px-4 py-2 text-sm rounded-xl transition-all duration-150 border-l-2 pl-[14px] text-left
+                  className={`w-full flex items-center gap-3 px-4 py-1.5 text-sm transition-all duration-150 text-left
+                    border-l-[3px] pl-[13px]
                     ${isSelected
-                      ? 'bg-brand-600/20 text-brand-300 border-brand-500 font-medium'
-                      : 'text-white/60 hover:text-white hover:bg-white/5 border-transparent'
+                      ? 'text-white border-white'
+                      : 'text-spotify-muted hover:text-white border-transparent'
                     }`}
+                  style={{ background: isSelected ? 'rgba(255,255,255,0.07)' : undefined }}
                 >
                   <FontAwesomeIcon
                     icon={isAll ? faMapLocationDot : faLocationDot}
-                    className={`w-3.5 text-xs ${isSelected ? 'text-brand-400' : 'text-white/35'}`}
+                    className={`w-3.5 text-xs ${isSelected ? 'text-white' : 'text-spotify-subtle'}`}
                   />
                   <span className="truncate">{isAll ? 'Tüm Türkiye' : city}</span>
                 </button>
@@ -162,15 +163,17 @@ export default function Sidebar({
                 <button
                   key={genre.tag}
                   onClick={() => handleGenreClick(genre)}
-                  className={`w-full flex items-center gap-3 px-4 py-2 text-sm rounded-xl transition-all duration-150 border-l-2 pl-[14px] text-left
+                  className={`w-full flex items-center gap-3 px-4 py-1.5 text-sm transition-all duration-150 text-left
+                    border-l-[3px] pl-[13px]
                     ${isSelected
-                      ? 'bg-brand-600/20 text-brand-300 border-brand-500 font-medium'
-                      : 'text-white/60 hover:text-white hover:bg-white/5 border-transparent'
+                      ? 'text-white border-white'
+                      : 'text-spotify-muted hover:text-white border-transparent'
                     }`}
+                  style={{ background: isSelected ? 'rgba(255,255,255,0.07)' : undefined }}
                 >
                   <FontAwesomeIcon
                     icon={faMusic}
-                    className={`w-3.5 text-xs ${isSelected ? 'text-brand-400' : 'text-white/35'}`}
+                    className={`w-3.5 text-xs ${isSelected ? 'text-white' : 'text-spotify-subtle'}`}
                   />
                   <span className="truncate">{genre.label}</span>
                 </button>
@@ -179,9 +182,9 @@ export default function Sidebar({
           </SidebarSection>
         </div>
 
-        <div className="p-4 border-t border-white/5 text-center">
-          <p className="text-xs text-white/30 font-medium">
-            Radio Browser • hls.js
+        <div className="px-4 py-3" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+          <p className="text-[10px] text-spotify-subtle font-medium">
+            Radio Browser · hls.js
           </p>
         </div>
       </aside>

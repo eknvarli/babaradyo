@@ -17,12 +17,12 @@ import { safeFaviconUrl, DEFAULT_RADIO_SVG, getPlaceholderSvg } from '../utils/i
 
 function VolumeControlIcon({ muted, volume }) {
   if (muted || volume === 0) {
-    return <FontAwesomeIcon icon={faVolumeXmark} className="w-4 h-4 text-white/50" />
+    return <FontAwesomeIcon icon={faVolumeXmark} className="w-3.5 h-3.5 text-neutral-400" />
   }
   if (volume < 0.5) {
-    return <FontAwesomeIcon icon={faVolumeLow} className="w-4 h-4 text-white/70" />
+    return <FontAwesomeIcon icon={faVolumeLow} className="w-3.5 h-3.5 text-neutral-400" />
   }
-  return <FontAwesomeIcon icon={faVolumeHigh} className="w-4 h-4 text-white/80" />
+  return <FontAwesomeIcon icon={faVolumeHigh} className="w-3.5 h-3.5 text-neutral-400" />
 }
 
 function PlayerLogo({ station }) {
@@ -40,10 +40,11 @@ function PlayerLogo({ station }) {
       key={station?.id}
       src={imgSrc}
       alt={station?.name || 'Radyo'}
-      className="w-full h-full object-cover rounded-xl"
+      className="w-full h-full object-cover"
       onError={handleError}
       loading="eager"
       decoding="async"
+      referrerPolicy="no-referrer"
     />
   )
 }
@@ -64,10 +65,10 @@ export default function Player({
 }) {
   if (!station) {
     return (
-      <footer className="fixed bottom-0 left-0 right-0 z-40 glass-strong border-t border-white/8">
-        <div className="flex items-center justify-center py-4 gap-2.5">
-          <FontAwesomeIcon icon={faRadio} className="text-brand-400 text-sm" />
-          <p className="text-white/40 text-sm font-medium">
+      <footer className="fixed bottom-0 left-0 right-0 z-40 bg-[#181818] border-t border-white/[0.08] h-12 sm:h-14 flex items-center justify-center px-4 select-none">
+        <div className="flex items-center gap-2">
+          <FontAwesomeIcon icon={faRadio} className="text-neutral-400 text-xs sm:text-sm" />
+          <p className="text-neutral-400 text-xs sm:text-sm font-normal">
             Bir radyo istasyonu seçin ve canlı dinleyin
           </p>
         </div>
@@ -75,105 +76,98 @@ export default function Player({
     )
   }
 
-  return (
-    <footer className="fixed bottom-0 left-0 right-0 z-40 glass-strong border-t border-white/10 animate-slide-up shadow-2xl">
-      <div className="h-0.5 w-full bg-gradient-to-r from-brand-600 via-purple-500 to-pink-500 opacity-90" />
+  const volPct = (isMuted ? 0 : volume) * 100
 
-      <div className="px-4 py-3 flex items-center gap-4">
-        <div className="flex items-center gap-3 flex-1 min-w-0">
-          <div className="w-12 h-12 flex-shrink-0 rounded-xl overflow-hidden shadow-lg bg-dark-600">
+  return (
+    <footer className="fixed bottom-0 left-0 right-0 z-40 bg-[#181818] border-t border-white/[0.08] h-16 sm:h-20 select-none shadow-2xl">
+      <div className="h-full px-3 sm:px-4 flex items-center justify-between gap-2 sm:gap-4 max-w-full overflow-hidden">
+        
+        {/* Sol Alan: Kapak, Bilgiler ve Favori */}
+        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 max-w-[44%] sm:max-w-[32%] flex-shrink-1">
+          <div className="w-10 h-10 sm:w-12 sm:h-12 flex-shrink-0 rounded-md overflow-hidden bg-[#242424] shadow-sm">
             <PlayerLogo station={station} />
           </div>
 
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2">
-              {isPlaying && (
-                <span className="relative flex-shrink-0 h-2.5 w-2.5">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
-                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-400" />
-                </span>
-              )}
-              <p className="text-white font-semibold text-sm truncate">{station.name}</p>
-            </div>
-
-            <div className="flex items-center gap-2 mt-0.5">
-              {error ? (
-                <div className="flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
-                  <p className="text-amber-300 text-xs truncate max-w-[200px]">{error}</p>
-                </div>
-              ) : isLoading ? (
-                <p className="text-brand-400 text-xs animate-pulse font-medium">Yayın yükleniyor...</p>
-              ) : (
-                <p className="text-white/40 text-xs truncate">
-                  {station.country || 'Canlı Yayın'}
-                  {station.bitrate > 0 && ` • ${station.bitrate}kbps`}
-                  {station.codec && ` • ${station.codec.toUpperCase()}`}
-                </p>
-              )}
-            </div>
+          <div className="min-w-0 flex flex-col justify-center">
+            <p className="text-white font-semibold text-xs sm:text-sm truncate leading-snug" title={station.name}>
+              {station.name}
+            </p>
+            {error ? (
+              <p className="text-amber-400 text-[10px] sm:text-xs truncate leading-normal" title={error}>
+                {error}
+              </p>
+            ) : isLoading ? (
+              <p className="text-neutral-400 text-[10px] sm:text-xs truncate leading-normal animate-pulse">
+                Bağlanıyor...
+              </p>
+            ) : (
+              <p className="text-neutral-400 text-[10px] sm:text-xs truncate leading-normal">
+                {station.country || 'Canlı Yayın'}
+                {station.bitrate > 0 && ` • ${station.bitrate}k`}
+              </p>
+            )}
           </div>
-        </div>
 
-        <div className="hidden md:block w-44 h-10 flex-shrink-0">
-          <Visualizer isPlaying={isPlaying} volume={isMuted ? 0 : volume} />
-        </div>
-
-        <div className="flex items-center gap-2 flex-shrink-0">
           <button
             onClick={() => onToggleFavorite(station)}
-            className={`p-2.5 rounded-xl transition-all duration-200 flex items-center justify-center
-              ${isFavorite
-                ? 'text-pink-500 bg-pink-500/15 hover:bg-pink-500/25 shadow-sm shadow-pink-500/20'
-                : 'text-white/35 hover:text-pink-400 hover:bg-pink-500/10'
-              }`}
+            className={`flex-shrink-0 p-1 transition-all duration-150 active:scale-90
+              ${isFavorite ? 'text-pink-500' : 'text-neutral-400 hover:text-white'}`}
             aria-label={isFavorite ? 'Favorilerden kaldır' : 'Favorilere ekle'}
           >
             <FontAwesomeIcon
               icon={isFavorite ? faHeartSolid : faHeartRegular}
-              className={`text-base transition-transform duration-200 ${isFavorite ? 'scale-110' : 'hover:scale-105'}`}
+              className="text-xs sm:text-sm"
             />
+          </button>
+        </div>
+
+        {/* Orta Alan: Denetimler & Visualizer */}
+        <div className="flex items-center justify-center gap-2 sm:gap-4 flex-shrink-0">
+          <button
+            onClick={onStop}
+            className="text-neutral-400 hover:text-white p-1.5 transition-colors duration-150"
+            aria-label="Durdur"
+            title="Durdur"
+          >
+            <FontAwesomeIcon icon={faStop} className="text-xs sm:text-sm" />
           </button>
 
           <button
             onClick={onTogglePlay}
             disabled={isLoading && !isPlaying}
-            className={`
-              w-12 h-12 rounded-full flex items-center justify-center
-              transition-all duration-200 shadow-lg text-white text-base
+            className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center text-black
+              transition-all duration-150 active:scale-95 shadow-md flex-shrink-0
               ${(isLoading && !isPlaying)
-                ? 'bg-dark-600 cursor-wait text-brand-400'
-                : 'bg-gradient-to-br from-brand-500 to-purple-600 hover:from-brand-400 hover:to-purple-500 glow-brand active:scale-95'
-              }
-            `}
+                ? 'bg-neutral-600 cursor-wait'
+                : 'bg-white hover:scale-105'
+              }`}
             aria-label={isPlaying ? 'Duraklat' : 'Oynat'}
           >
             {isLoading && !isPlaying ? (
-              <FontAwesomeIcon icon={faSpinner} className="animate-spin text-lg" />
+              <FontAwesomeIcon icon={faSpinner} className="animate-spin text-white text-xs" />
             ) : isPlaying ? (
-              <FontAwesomeIcon icon={faPause} className="text-base" />
+              <FontAwesomeIcon icon={faPause} className="text-xs sm:text-sm" />
             ) : (
-              <FontAwesomeIcon icon={faPlay} className="text-base ml-0.5" />
+              <FontAwesomeIcon icon={faPlay} className="text-xs sm:text-sm ml-0.5" />
             )}
           </button>
 
+          <div className="hidden md:block w-24 lg:w-32 h-6 flex-shrink-0 opacity-80">
+            <Visualizer isPlaying={isPlaying} volume={isMuted ? 0 : volume} />
+          </div>
+        </div>
+
+        {/* Sağ Alan: Ses Çubuğu */}
+        <div className="flex items-center justify-end gap-1.5 sm:gap-2 flex-shrink-0 sm:min-w-[130px]">
           <button
-            onClick={onStop}
-            className="p-2.5 rounded-xl text-white/35 hover:text-white/80 hover:bg-white/5 transition-all duration-200"
-            aria-label="Durdur"
-            title="Durdur"
+            onClick={onToggleMute}
+            className="text-neutral-400 hover:text-white transition-colors duration-150 p-1.5"
+            aria-label={isMuted ? 'Sesi aç' : 'Sesi kapat'}
           >
-            <FontAwesomeIcon icon={faStop} className="text-sm" />
+            <VolumeControlIcon muted={isMuted} volume={volume} />
           </button>
 
-          <div className="hidden sm:flex items-center gap-2 ml-1">
-            <button
-              onClick={onToggleMute}
-              className="p-1.5 text-white/50 hover:text-white transition-colors"
-              aria-label={isMuted ? 'Sesi aç' : 'Sesi kapat'}
-            >
-              <VolumeControlIcon muted={isMuted} volume={volume} />
-            </button>
+          <div className="hidden sm:flex items-center w-20 sm:w-24">
             <input
               type="range"
               min={0}
@@ -181,17 +175,15 @@ export default function Player({
               step={0.02}
               value={isMuted ? 0 : volume}
               onChange={(e) => onVolumeChange(parseFloat(e.target.value))}
-              className="w-24"
+              className="w-full"
               style={{
-                background: `linear-gradient(to right, rgb(74,108,247) ${(isMuted ? 0 : volume) * 100}%, rgba(255,255,255,0.1) ${(isMuted ? 0 : volume) * 100}%)`,
+                background: `linear-gradient(to right, #ffffff ${volPct}%, rgba(255,255,255,0.2) ${volPct}%)`,
               }}
               aria-label="Ses seviyesi"
             />
-            <span className="text-xs text-white/30 w-6 text-right font-medium">
-              {Math.round((isMuted ? 0 : volume) * 100)}
-            </span>
           </div>
         </div>
+
       </div>
     </footer>
   )
